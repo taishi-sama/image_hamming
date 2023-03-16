@@ -3,7 +3,7 @@
 pub mod hamming;
 pub mod types;
 
-use std::{fs::File, io::{BufReader, Read, Write}, iter::repeat};
+use std::{fs::File, io::{BufReader, Read, Write}, iter::repeat, path::{Path, PathBuf}};
 
 use image::{RgbImage};
 use types::GF2;
@@ -68,7 +68,7 @@ fn encode(container_file: &str, payload_file: &str, output_file: &str)
     output_image.save_with_format(output_file, image::ImageFormat::Png).expect("Saving image must be successful")
 }
 
-fn decode(container_file: &str, output_file: &str)
+fn decode(container_file: &str, output_file: &str, guess_filetype: bool)
 {
     let image_container = image::open(container_file).expect("Image expected").to_rgb8();
     let container_stream = image_container.pixels().flat_map(|x|x.0);
@@ -98,6 +98,20 @@ fn decode(container_file: &str, output_file: &str)
         println!("Reported file size inside \"{container_file}\" bigger that potential container capacity. Probably container is empty or corrupted")
     }
     output.truncate((4 + filesize).try_into().unwrap());
+
+    let mut output_file = output_file.to_owned();
+    if guess_filetype
+    {
+        match infer::get(&output[4..]) {
+            Some(f) =>  
+            {
+                println!("Filetype is {}, extension is {}", f.mime_type(), f.extension());
+                let p = PathBuf::from(output_file);
+                output_file = p.with_extension(f.extension()).to_str().unwrap().to_owned();
+            },
+            None => println!("Failed to guess filetype!"),
+        } 
+    }
     let mut f = File::create(output_file).expect("File is not created!");
     f.write_all(&output[4..]).expect("File write must be successful");
 }
@@ -131,6 +145,6 @@ fn main() {
     }
     else if let Some(matches) = matches.subcommand_matches("decode") {
         decode(matches.get_one::<String>("input").unwrap(), 
-        matches.get_one::<String>("output").unwrap_or(&("payload".into())));
+        matches.get_one::<String>("output").unwrap_or(&("payload".into())), true);
     }
 }

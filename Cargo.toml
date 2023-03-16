@@ -9,4 +9,5 @@ edition = "2021"
 clap = { version = "4.1.8", features = ["derive", "cargo"] }
 g2p = "1.0.1"
 image = "0.24.5"
+infer = "0.13.0"
 nalgebra = "0.32.2"
